@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, memo } from 'react';
 import Cell from './Cell';
 
 const GRID_SIZE = 32;
@@ -13,7 +13,7 @@ function buildZoneLookup(zones) {
   return lookup;
 }
 
-export default function GridCanvas({
+const GridCanvas = memo(function GridCanvas({
   grid, myUserId, zones, gridPowerups, animatedCells, zoom,
   onClaim, onCellHover, onCellLeave,
 }) {
@@ -48,4 +48,6 @@ export default function GridCanvas({
       ))}
     </div>
   );
-}
+});
+
+export default GridCanvas;
