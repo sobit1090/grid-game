@@ -413,8 +413,25 @@ export class GameManager {
     // Check if all players in the lobby are ready
     const allReady = Array.from(lobby.players.values()).every(p => p.isReady);
     if (allReady && lobby.players.size > 0) {
-      // Auto-restart game
-      await this.startGame(lobby.code);
+      // Reset back to LOBBY phase so players can choose duration again
+      lobby.status = 'LOBBY';
+      lobby.gameId = null;
+      lobby.cells.clear();
+      lobby.winnerUsername = null;
+      lobby.startTime = null;
+      lobby.endTime = null;
+      lobby.gameDuration = 300; // reset duration to default 5 min
+
+      // Reset all players ready state
+      for (const p of lobby.players.values()) {
+        p.isReady = false;
+      }
+
+      // Update DB
+      await prisma.lobby.update({
+        where: { id: lobby.id },
+        data: { status: 'LOBBY' }
+      }).catch(err => console.error('Failed to reset lobby status in DB:', err));
     }
 
     return lobby;

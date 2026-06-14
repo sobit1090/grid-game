@@ -228,11 +228,11 @@ io.on('connection', (socket) => {
       } else if (lobby.status === 'GAMEOVER') {
         const updatedLobby = await gameManager.setPlayerReady(code, username);
         if (updatedLobby) {
-          if (updatedLobby.status === 'ACTIVE') {
-            // All players are ready! Game auto-restarts
+          if (updatedLobby.status === 'ACTIVE' || updatedLobby.status === 'LOBBY') {
+            // All players are ready — broadcast restart (goes to LOBBY for duration select)
             io.to(roomName).emit(SOCKET_EVENTS.GAME_RESTART, gameManager.serializeLobby(updatedLobby));
           } else {
-            // Broadcast ready list updates
+            // Still waiting for other players — broadcast ready list updates
             io.to(roomName).emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(updatedLobby));
           }
         }
