@@ -1,10 +1,16 @@
 {
-  "name": "antigravity-grid-root",
+  "name": "grid-game-monorepo",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
     "start": "pnpm --filter server start",
-    "build": "pnpm --filter client build",
-    "dev": "pnpm -r --parallel dev"
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@prisma/client": "5.22.0",
+    "prisma": "5.22.0",
+    "typescript": "^5.3.3"
   }
 }

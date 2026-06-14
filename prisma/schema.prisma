@@ -1,0 +1,66 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  color      String
+  totalGames Int      @default(0)
+  wins       Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  moves      Move[]
+  cells      Cell[]
+}
+
+model Lobby {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  status    String   @default("LOBBY") // LOBBY, ACTIVE, GAMEOVER
+  gameId    String?  @unique
+  game      Game?    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Game {
+  id           String   @id @default(uuid())
+  winnerId     String?  // References Player.id or is null
+  duration     Int      @default(0) // Duration in seconds
+  totalPlayers Int      @default(0)
+  createdAt    DateTime @default(now())
+  
+  // Relations
+  lobby        Lobby?
+  cells        Cell[]
+  moves        Move[]
+}
+
+model Cell {
+  id      String  @id @default(uuid())
+  x       Int
+  y       Int
+  ownerId String? // References Player.id (can be null for unclaimed)
+  player  Player? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  gameId  String
+  game    Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, x, y]) // A specific cell in a specific game
+}
+
+model Move {
+  id        String   @id @default(uuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  cellIndex Int      // Calculated as x * 30 + y
+  timestamp DateTime @default(now())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}

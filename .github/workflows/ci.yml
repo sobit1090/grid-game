@@ -1,0 +1,76 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: haqms
+          POSTGRES_USER: sobit902266
+          POSTGRES_PASSWORD: sobit1033
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Install PNPM
+      uses: pnpm/action-setup@v3
+      with:
+        version: 8
+
+    - name: Get PNPM Store Directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Cache PNPM Dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install Dependencies
+      run: pnpm install --no-frozen-lockfile
+
+    - name: Generate Prisma Client
+      run: pnpm --filter server prisma:generate
+      env:
+        DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
+
+    - name: Push Prisma Schema
+      run: npx prisma db push
+      env:
+        DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
+
+    - name: Build Codebases
+      run: pnpm build
+      env:
+        DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
+
+    - name: Run Tests
+      run: pnpm test
+      env:
+        DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"

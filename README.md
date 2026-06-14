@@ -1,32 +1,95 @@
-# Antigravity Grid - Real-Time Territory War
+# CosmoGrid: Real-Time Multiplayer Grid Capture
 
-## Deployed App Link  
-* **Link**: [https://grid-game-ruby.vercel.app/](https://grid-game-ruby.vercel.app/)
+A production-grade, real-time multiplayer grid claiming game designed as a high-performance monorepo workspace.
 
-## GitHub Repository Link (Make sure the repo is public and includes a README)   
-* **Repository**: [https://github.com/sobit1090/grid-game](https://github.com/sobit1090/grid-game)
+## 🚀 Key Features
 
-## Tech Stack Used   
-* **Frontend**: React (v19), Vite, Vanilla CSS3, Socket.io-client
-* **Backend**: Node.js, Express, Socket.io
-* **Deployment**: Vercel (Frontend), Node.js / Localhost (Backend)
+* **Real-time synchronized game board**: Multi-client grid state replication in under 50ms using Socket.IO.
+* **Optimistic Database Concurrency**: Safe transaction logic preventing race conditions when two players claim the same cell simultaneously.
+* **Play Again Voting System**: Seamless lobby reset and vote counts without full page refresh.
+* **Persistent Sessions**: Reconnection state tracking utilizing local browser storage and socket session caches.
+* **Twinkling Space Visuals**: Premium Tailwind CSS v4 design with glowing assets, scale pulses, and interactive confetti particles.
 
-## How did you handle real-time updates?  
-* **Socket.io WebSockets**: Real-time state synchronization is managed via WebSockets to enable fast, bi-directional communication.
-* **Server Authority**: The backend server acts as the single source of truth, validating all claims (checking cell ranges, cooldowns, active shields) and maintaining the state in-memory.
-* **State Broadcasts**: Validated events (such as claims, stats, leaderboard rankings, chat messages, and round events) are immediately broadcast to all players.
-* **Custom hook sync**: The client uses `useGameSocket` (a custom React hook) to maintain WebSocket state, listen for socket events, update client state, and cleanly unsubscribe on unmount.
+---
 
-## What trade-offs did you make?   
-* **In-Memory State**: Storing game state in-memory on the Node server results in extremely fast, sub-millisecond response times, but does not persist grid state across server restarts. (For a full production game, a fast store like Redis would be integrated).
-* **Decoupled Hosting Architecture**: Because Vercel serverless environments do not support persistent WebSockets, we serve the static client page from Vercel while pointing to a separate, dedicated Node.js server for the WebSocket server.
-* **WebSocket-only connection**: Disabled Socket.io's HTTP long-polling fallback (`transports: ['websocket']`) to prevent endless polling request overhead and execution timeouts on serverless environments.
-* **Rendering Optimizations**: Rendering a 1,024-cell grid in React can cause lag. We wrapped `Cell` and `GridCanvas` in `React.memo` to ensure only the changed cells re-render on grid updates, maintaining a constant 60 FPS.
+## 🛠️ Tech Stack
 
-## Any bonus features you added?  
-* **Round System**: Lobby screen allowing players to select round duration (2m, 5m, 10m), matching countdown timers, and an overlay screen showing the winner and final leaderboard scores.
-* **Powerup System**: Randomly spawning powerups (Speed Boost for zero cooldown claims, Mega Claim to capture 3x3 blocks, Shield to prevent block theft, and Vision to see future spawns).
-* **Achievements System**: Dynamic custom achievements/badges (like "Pioneer", "Settler", "Unstoppable") that trigger client-side notifications (toasts).
-* **Zone Multipliers**: High-value grid zones (Center 2.0x multiplier, Edges 1.5x multiplier, Corners 1.2x multiplier) to guide player conflict.
-* **Visual Effects**: Custom color-styled floating score points popping up at mouse click coordinates, a dynamic flame claim-streak banner, and a parallax scrolling starfield.
-* **Audio Feedback**: Built-in sound effects (using WebAudio API) for claiming, getting blocked, picking up/activating powerups, and unlocking achievements.
+* **Frontend**: Next.js 15 (App Router), TypeScript, Tailwind CSS v4, Framer Motion, Socket.IO Client
+* **Backend**: Node.js, Express, TypeScript, Socket.IO
+* **Database**: PostgreSQL, Prisma ORM
+* **Monorepo Manager**: PNPM Workspaces
+
+---
+
+## 📁 Repository Structure
+
+```text
+grid-game/
+ ├── apps/
+ │    ├── web/           # Next.js 15 App Router + Tailwind v4 + Framer Motion (Port 3000)
+ │    └── server/        # Express + Socket.IO TypeScript server (Port 3001)
+ ├── packages/
+ │    └── shared/        # Shared Type definitions (Socket events, payloads)
+ ├── prisma/
+ │    └── schema.prisma  # Root-level Prisma models (Player, Lobby, Game, Cell, Move)
+ ├── docs/               # Advanced architecture, APIs, interview prep documentation
+ ├── pnpm-workspace.yaml # Workspace definitions
+ ├── vercel.json         # Vercel deployment configurations
+ └── package.json        # Monorepo scripts
+```
+
+---
+
+## 🔧 Installation & Local Setup
+
+### Prerequisites
+* **Node.js**: v20 or later
+* **PNPM**: Installed globally (`npm install -g pnpm`)
+* **PostgreSQL**: Running instance (e.g. Docker container)
+
+### 1. Install Dependencies
+Run the installation command in the root directory:
+```bash
+pnpm install
+```
+
+### 2. Configure Database & Environment
+The project expects a `.env` file at the root. We have pre-configured it to point to your local PostgreSQL container mapping to port `5433`:
+```env
+DATABASE_URL="postgresql://sobit902266:sobit1033@localhost:5433/haqms?schema=public"
+PORT=3001
+NEXT_PUBLIC_WS_URL="http://localhost:3001"
+```
+
+### 3. Generate Prisma Database Client
+Prepare the database schema structures:
+```bash
+pnpm --filter server prisma:generate
+```
+
+### 4. Run Migrations
+Synchronize PostgreSQL with the Prisma schema:
+```bash
+npx prisma db push
+```
+
+### 5. Launch Development Servers
+Run both the Next.js frontend and Express/Socket.IO backend in parallel:
+```bash
+pnpm dev
+```
+* **Frontend**: Open `http://localhost:3000`
+* **Backend**: Runs on `http://localhost:3001`
+
+---
+
+## 📚 Technical Documentation (Docs Folder)
+
+Detailed specifications are available in the `/docs` directory:
+1. [FEATURES.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/FEATURES.md) - Deep dive of client interactions and game elements.
+2. [ARCHITECTURE.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/ARCHITECTURE.md) - System layout diagrams and data flows.
+3. [INTERVIEW_PREP.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/INTERVIEW_PREP.md) - 30+ answers to database locking, WebSockets scaling, and state caching questions.
+4. [TRADEOFFS.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/TRADEOFFS.md) - Pros & cons of choosing PostgreSQL, Next.js, and Socket.IO.
+5. [API.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/API.md) - Rest HTTP routes and real-time Socket event payloads.
+6. [DATABASE.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DATABASE.md) - Table schema breakdown and relational links.
+7. [DEPLOYMENT.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DEPLOYMENT.md) - Production guides for Vercel, Railway, and Neon Postgres.
