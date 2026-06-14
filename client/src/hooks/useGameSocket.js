@@ -164,6 +164,24 @@ export default function useGameSocket() {
       addToast({ type: 'system', icon: '🎮', title: 'Mode Changed', body: `Now playing: ${mode.toUpperCase()}` });
     });
 
+    socket.on('lobby_reset', ({ gridState, leaderboard: lb, teamStats: ts }) => {
+      setPhase('lobby');
+      setGrid(gridState.grid || {});
+      setGridPowerups(gridState.activePowerups || []);
+      setZones(gridState.zones || {});
+      setGameModeState(gridState.gameMode || 'ffa');
+      setLeaderboard(lb || []);
+      setTeamStats(ts || { red: { score: 0, blocks: 0 }, blue: { score: 0, blocks: 0 } });
+      setMyStats({ blocks: 0, score: 0, streak: 0, claims: 0 });
+      setActivePowerups([]);
+      setStreak(0);
+      setRoundRemaining(0);
+      setRoundEndTime(0);
+      setRoundWinner(null);
+      setFinalLeaderboard([]);
+      setChatMessages(prev => [...prev, { system: true, text: `🔄 Round reset to lobby! Choose settings and start when ready.` }]);
+    });
+
     return () => socket.removeAllListeners();
   }, [addToast, animateCell]);
 
@@ -193,11 +211,15 @@ export default function useGameSocket() {
     socket.emit('activate_powerup', { powerupId });
   }, []);
 
+  const resetToLobby = useCallback(() => {
+    socket.emit('reset_to_lobby');
+  }, []);
+
   return {
     connected, joined, myUser, grid, leaderboard, teamStats, playerCount,
     activePowerups, gridPowerups, gameMode, zones, myStats, toasts,
     chatMessages, animatedCells, floatScores, streak,
     phase, roundRemaining, roundEndTime, roundWinner, finalLeaderboard,
-    join, claimCell, sendChat, setMode, startRound, activatePowerup,
+    join, claimCell, sendChat, setMode, startRound, activatePowerup, resetToLobby,
   };
 }

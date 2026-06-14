@@ -55,7 +55,7 @@ export default function App() {
     activePowerups, gridPowerups, gameMode, zones, myStats, toasts,
     chatMessages, animatedCells, floatScores, streak,
     phase, roundRemaining, roundEndTime, roundWinner, finalLeaderboard,
-    join, claimCell, sendChat, setMode, startRound, activatePowerup,
+    join, claimCell, sendChat, setMode, startRound, activatePowerup, resetToLobby,
   } = useGameSocket();
 
   const claimedCount = useMemo(() => Object.keys(grid).length, [grid]);
@@ -88,7 +88,7 @@ export default function App() {
         <WinnerScreen
           leaderboard={finalLeaderboard}
           winner={roundWinner}
-          onRestart={startRound}
+          onRestart={resetToLobby}
         />
       )}
 

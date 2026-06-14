@@ -510,8 +510,27 @@ io.on('connection', (socket) => {
           teamStats: buildTeamStats(),
           winner,
         });
-      }
     }, 1000);
+  });
+
+  // ── RESET TO LOBBY ────────────────────────────────────────────────────────
+  socket.on('reset_to_lobby', () => {
+    if (gameState.roundTimer) clearInterval(gameState.roundTimer);
+    gameState.roundTimer = null;
+    gameState.phase = 'lobby';
+    gameState.grid = {};
+    gameState.claims = {};
+    gameState.activePowerups = [];
+    Object.values(gameState.users).forEach((u) => {
+      u.blocks = 0; u.score = 0; u.streak = 0; u.maxStreak = 0;
+      u.totalClaims = 0; u.powerupsUsed = 0; u.achievements = []; u.activePowerups = [];
+    });
+
+    io.to('game').emit('lobby_reset', {
+      gridState: getFullGridState(),
+      leaderboard: buildLeaderboard(),
+      teamStats: buildTeamStats(),
+    });
   });
 
   // ── CHAT ─────────────────────────────────────────────────────────────────
