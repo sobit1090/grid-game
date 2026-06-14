@@ -16,6 +16,8 @@ export interface SharedLobby {
   gameId: string;
   players: SharedPlayer[];
   readyCount: number;
+  gameDuration?: number;
+  endTime?: number | null;
 }
 
 export interface SharedGame {
@@ -56,6 +58,7 @@ export const SOCKET_EVENTS = {
   JOIN_GAME: 'join_game',
   CAPTURE_CELL: 'capture_cell',
   PLAYER_READY: 'player_ready',
+  SET_DURATION: 'set_duration',
 
   // Server -> Client
   CELL_UPDATED: 'cell_updated',

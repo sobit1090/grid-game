@@ -21,6 +21,18 @@ const io = new Server(server, {
 const prisma = new PrismaClient();
 const gameManager = new GameManager();
 
+// Notify players when the server game timer runs out
+gameManager.onGameEnded = (lobbyCode) => {
+  const lobby = gameManager.getLobby(lobbyCode);
+  if (lobby) {
+    const roomName = `lobby_${lobby.code}`;
+    io.to(roomName).emit(SOCKET_EVENTS.GAME_OVER, {
+      winnerUsername: lobby.winnerUsername,
+      leaderboard: gameManager.getLeaderboard(lobby)
+    });
+  }
+};
+
 app.use(cors());
 app.use(express.json());
 
@@ -227,6 +239,20 @@ io.on('connection', (socket) => {
       }
     } catch (error) {
       console.error('Socket player_ready error:', error);
+    }
+  });
+
+  // Set Duration during LOBBY phase
+  socket.on(SOCKET_EVENTS.SET_DURATION, async ({ code, duration }) => {
+    if (!code || typeof duration !== 'number') return;
+    try {
+      const updatedLobby = gameManager.setDuration(code, duration);
+      if (updatedLobby) {
+        const roomName = `lobby_${updatedLobby.code}`;
+        io.to(roomName).emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(updatedLobby));
+      }
+    } catch (error) {
+      console.error('Socket set_duration error:', error);
     }
   });
 

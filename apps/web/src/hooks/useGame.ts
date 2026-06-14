@@ -18,7 +18,9 @@ export function useGame(lobbyCodeFromUrl: string | null) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [winnerUsername, setWinnerUsername] = useState<string | null>(null);
-  
+  const [gameDuration, setGameDurationState] = useState<number>(300);
+  const [endTime, setEndTime] = useState<number | null>(null);
+
   // Session details
   const [username, setUsername] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(null);
@@ -69,6 +71,12 @@ export function useGame(lobbyCodeFromUrl: string | null) {
       setLeaderboard(lobbyData.leaderboard);
       setOnlineCount(lobbyData.onlineCount);
       setWinnerUsername(lobbyData.winnerUsername);
+      if (typeof lobbyData.gameDuration === 'number') {
+        setGameDurationState(lobbyData.gameDuration);
+      }
+      if (typeof lobbyData.endTime === 'number' || lobbyData.endTime === null) {
+        setEndTime(lobbyData.endTime);
+      }
     });
 
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, (data) => {
@@ -103,6 +111,12 @@ export function useGame(lobbyCodeFromUrl: string | null) {
       setCells(lobbyData.cells);
       setLeaderboard(lobbyData.leaderboard);
       setWinnerUsername(null);
+      if (typeof lobbyData.gameDuration === 'number') {
+        setGameDurationState(lobbyData.gameDuration);
+      }
+      if (typeof lobbyData.endTime === 'number' || lobbyData.endTime === null) {
+        setEndTime(lobbyData.endTime);
+      }
     });
 
     socket.on(SOCKET_EVENTS.ERROR, (err) => {
@@ -164,6 +178,16 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     });
   }, [lobbyCode, username]);
 
+  // Set match duration limit
+  const setGameDuration = useCallback((seconds: number) => {
+    if (!socketRef.current || !lobbyCode || !connected) return;
+
+    socketRef.current.emit(SOCKET_EVENTS.SET_DURATION, {
+      code: lobbyCode,
+      duration: seconds
+    });
+  }, [lobbyCode, connected]);
+
   return {
     connected,
     lobbyCode,
@@ -176,10 +200,13 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     username,
     color,
     socketError,
+    gameDuration,
+    endTime,
     joinGame,
     claimCell,
     triggerPlayAgain,
-    startMatch
+    startMatch,
+    setGameDuration
   };
 }
 export default useGame;

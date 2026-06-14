@@ -21,12 +21,16 @@ export interface InMemoryLobby {
   startTime: number | null;
   endTime: number | null;
   winnerUsername: string | null;
+  gameDuration: number; // in seconds
 }
 
 export class GameManager {
   private lobbies: Map<string, InMemoryLobby> = new Map();
   // Maps socketId -> { lobbyCode, username }
   private socketToPlayer: Map<string, { lobbyCode: string; username: string }> = new Map();
+  private lobbyTimers: Map<string, NodeJS.Timeout> = new Map();
+
+  public onGameEnded: ((lobbyCode: string) => void) | null = null;
 
   // Generate 5-character uppercase invite code
   private generateLobbyCode(): string {
@@ -62,7 +66,8 @@ export class GameManager {
       cells: new Map(),
       startTime: null,
       endTime: null,
-      winnerUsername: null
+      winnerUsername: null,
+      gameDuration: 300 // default 5 minutes
     };
 
     this.lobbies.set(code, lobby);
@@ -199,13 +204,26 @@ export class GameManager {
     lobby.status = 'ACTIVE';
     lobby.gameId = game.id;
     lobby.startTime = Date.now();
-    lobby.endTime = null;
+    lobby.endTime = lobby.startTime + lobby.gameDuration * 1000;
     lobby.winnerUsername = null;
 
     // Reset ready states
     for (const player of lobby.players.values()) {
       player.isReady = false;
     }
+
+    // Set server-side game end timer
+    const existingTimer = this.lobbyTimers.get(code);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    const timer = setTimeout(async () => {
+      const activeLobby = this.getLobby(code);
+      if (activeLobby && activeLobby.status === 'ACTIVE' && activeLobby.gameId === lobby.gameId) {
+        await this.endGame(activeLobby);
+      }
+    }, lobby.gameDuration * 1000);
+    this.lobbyTimers.set(code, timer);
 
     return lobby;
   }
@@ -275,8 +293,15 @@ export class GameManager {
   }
 
   // End the game
-  private async endGame(lobby: InMemoryLobby) {
+  public async endGame(lobby: InMemoryLobby) {
     if (!lobby.gameId) return;
+
+    // Clear timer
+    const timer = this.lobbyTimers.get(lobby.code);
+    if (timer) {
+      clearTimeout(timer);
+      this.lobbyTimers.delete(lobby.code);
+    }
 
     lobby.status = 'GAMEOVER';
     lobby.endTime = Date.now();
@@ -349,6 +374,23 @@ export class GameManager {
         }
       }).catch(err => console.error(`Failed to update stats for ${username}`, err));
     }
+
+    // Notify listeners that game has ended
+    if (this.onGameEnded) {
+      this.onGameEnded(lobby.code);
+    }
+  }
+
+  // Set game duration during LOBBY phase
+  public setDuration(code: string, duration: number): InMemoryLobby | null {
+    const lobby = this.getLobby(code);
+    if (!lobby || lobby.status !== 'LOBBY') return null;
+
+    // Allow 2 min (120s), 5 min (300s), 10 min (600s)
+    if ([120, 300, 600].includes(duration)) {
+      lobby.gameDuration = duration;
+    }
+    return lobby;
   }
 
   // Set player ready state for play again
@@ -424,7 +466,9 @@ export class GameManager {
       cells: cellsSnapshot,
       winnerUsername: lobby.winnerUsername,
       leaderboard,
-      onlineCount: lobby.players.size
+      onlineCount: lobby.players.size,
+      gameDuration: lobby.gameDuration,
+      endTime: lobby.endTime
     };
   }
 
