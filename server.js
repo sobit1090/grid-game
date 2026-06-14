@@ -355,11 +355,11 @@ io.on('connection', (socket) => {
     // Update user stats
     if (!prevOwner || prevOwner.userId !== userId) {
       currentUser.blocks++;
+      currentUser.score += points;
+      currentUser.streak++;
+      currentUser.totalClaims++;
+      if (currentUser.streak > currentUser.maxStreak) currentUser.maxStreak = currentUser.streak;
     }
-    currentUser.score += points;
-    currentUser.streak++;
-    currentUser.totalClaims++;
-    if (currentUser.streak > currentUser.maxStreak) currentUser.maxStreak = currentUser.streak;
 
     // Check powerup on that cell
     const pwIdx = gameState.activePowerups.findIndex((p) => p.cellId === cid);
