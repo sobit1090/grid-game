@@ -1,9 +1,8 @@
 import { io } from 'socket.io-client';
 
-// Connect to the same host (Vite proxy forwards /socket.io → localhost:3001)
-const socket = io(window.location.origin, {
-  path: '/socket.io',
-  transports: ['websocket', 'polling'],
-});
+// Use env var in production, or localhost for local dev
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.PROD ? undefined : 'http://localhost:3001');
+
+const socket = io(BACKEND_URL);
 
 export default socket;
