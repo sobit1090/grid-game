@@ -180,17 +180,40 @@ export function useGame(lobbyCodeFromUrl: string | null) {
 
   // Set match duration limit
   const setGameDuration = useCallback((seconds: number) => {
-    console.log('[CLIENT] setGameDuration called:', seconds, 'lobbyCode:', lobbyCode, 'connected:', connected);
-    if (!socketRef.current || !lobbyCode || !connected) {
-      console.warn('[CLIENT] setGameDuration ignored. socket:', !!socketRef.current, 'lobbyCode:', lobbyCode, 'connected:', connected);
-      return;
-    }
+    // Update local state immediately for instant visual feedback
+    setGameDurationState(seconds);
+
+    if (!socketRef.current || !lobbyCode || !connected) return;
 
     socketRef.current.emit(SOCKET_EVENTS.SET_DURATION, {
       code: lobbyCode,
       duration: seconds
     });
   }, [lobbyCode, connected]);
+
+  // Leave lobby and go back to welcome screen
+  const leaveLobby = useCallback(() => {
+    // Clear localStorage lobby reference
+    localStorage.removeItem('grid_lobby_code');
+
+    // Disconnect and reconnect socket to leave the room
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current.connect();
+    }
+
+    // Reset all game state
+    setLobbyCode(null);
+    setStatus('LOBBY');
+    setPlayers([]);
+    setCells({});
+    setLeaderboard([]);
+    setOnlineCount(0);
+    setWinnerUsername(null);
+    setGameDurationState(300);
+    setEndTime(null);
+    setSocketError(null);
+  }, []);
 
   return {
     connected,
@@ -210,7 +233,8 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     claimCell,
     triggerPlayAgain,
     startMatch,
-    setGameDuration
+    setGameDuration,
+    leaveLobby
   };
 }
 export default useGame;

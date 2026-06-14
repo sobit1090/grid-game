@@ -8,7 +8,7 @@ import WinnerModal from '../components/WinnerModal';
 import PlayerCard from '../components/PlayerCard';
 import Leaderboard from '../components/Leaderboard';
 import { useGame } from '../hooks/useGame';
-import { Sparkles, Globe, Wifi, WifiOff, Plus, UserPlus, Play } from 'lucide-react';
+import { Sparkles, Globe, Wifi, WifiOff, Plus, UserPlus, Play, LogOut } from 'lucide-react';
 
 const PRESET_COLORS = [
   '#00f0ff', // Neon Cyan
@@ -42,7 +42,8 @@ function GameContent() {
     claimCell,
     triggerPlayAgain,
     startMatch,
-    setGameDuration
+    setGameDuration,
+    leaveLobby
   } = useGame(lobbyCodeFromUrl);
 
   // Welcome Screen Form States
@@ -94,6 +95,8 @@ function GameContent() {
   useEffect(() => {
     if (lobbyCode) {
       router.replace(`/?lobby=${lobbyCode}`);
+    } else {
+      router.replace('/');
     }
   }, [lobbyCode, router]);
 
@@ -265,9 +268,14 @@ function GameContent() {
         <div className="min-h-screen flex flex-col p-4 md:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6">
           {/* Header */}
           <header className="flex justify-between items-center w-full glass-panel px-6 py-4 rounded-2xl border border-slate-800/80">
-            <div className="flex items-center space-x-2">
+            <div 
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => { leaveLobby(); }}
+              title="Leave lobby and go back"
+            >
               <Globe className="w-6 h-6 text-indigo-400" />
               <span className="text-lg font-black text-white tracking-tight">CosmoGrid</span>
+              <LogOut className="w-4 h-4 text-slate-500 ml-1" />
             </div>
 
             <div className="flex items-center space-x-4">
