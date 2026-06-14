@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import socket from '../socket';
-
-const GRID_SIZE = 32;
 
 export default function useGameSocket() {
   const [connected, setConnected] = useState(false);
@@ -13,7 +11,7 @@ export default function useGameSocket() {
   const [playerCount, setPlayerCount] = useState(0);
   const [activePowerups, setActivePowerups] = useState([]);
   const [gridPowerups, setGridPowerups] = useState([]);
-  const [gameMode, setGameMode] = useState('ffa');
+  const [gameMode, setGameModeState] = useState('ffa');
   const [zones, setZones] = useState({});
   const [myStats, setMyStats] = useState({ blocks: 0, score: 0, streak: 0, claims: 0 });
   const [toasts, setToasts] = useState([]);
@@ -21,6 +19,12 @@ export default function useGameSocket() {
   const [animatedCells, setAnimatedCells] = useState(new Set());
   const [floatScores, setFloatScores] = useState([]);
   const [streak, setStreak] = useState(0);
+  // Round system state
+  const [phase, setPhase] = useState('lobby');
+  const [roundRemaining, setRoundRemaining] = useState(0);
+  const [roundEndTime, setRoundEndTime] = useState(0);
+  const [roundWinner, setRoundWinner] = useState(null);
+  const [finalLeaderboard, setFinalLeaderboard] = useState([]);
 
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
@@ -47,18 +51,52 @@ export default function useGameSocket() {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => { setConnected(false); setJoined(false); });
 
-    socket.on('joined', ({ userId, user, gridState, leaderboard: lb, teamStats: ts, playerCount: pc }) => {
+    socket.on('joined', ({ userId, user, gridState, leaderboard: lb, teamStats: ts,
+      playerCount: pc, phase: ph, roundRemaining: rr, roundEndTime: ret }) => {
       setMyUser({ ...user, userId });
       setGrid(gridState.grid || {});
       setGridPowerups(gridState.activePowerups || []);
       setZones(gridState.zones || {});
-      setGameMode(gridState.gameMode || 'ffa');
+      setGameModeState(gridState.gameMode || 'ffa');
       setLeaderboard(lb || []);
       setTeamStats(ts || { red: { score: 0, blocks: 0 }, blue: { score: 0, blocks: 0 } });
       setPlayerCount(pc || 0);
       setMyStats({ blocks: user.blocks, score: user.score, streak: user.streak, claims: user.totalClaims || 0 });
       setJoined(true);
+      setPhase(ph || 'lobby');
+      setRoundRemaining(rr || 0);
+      setRoundEndTime(ret || 0);
       setChatMessages(prev => [...prev, { system: true, text: `Welcome to the grid, ${user.name}! 🚀` }]);
+    });
+
+    // ── ROUND EVENTS ──
+    socket.on('round_started', ({ duration, endTime, gridState, leaderboard: lb }) => {
+      setPhase('active');
+      setRoundEndTime(endTime);
+      setRoundRemaining(duration);
+      setRoundWinner(null);
+      setFinalLeaderboard([]);
+      setGrid(gridState.grid || {});
+      setGridPowerups(gridState.activePowerups || []);
+      setLeaderboard(lb || []);
+      setMyStats({ blocks: 0, score: 0, streak: 0, claims: 0 });
+      setActivePowerups([]);
+      setStreak(0);
+      setChatMessages(prev => [...prev, { system: true, text: `🚀 Round started! ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2,'0')} — FIGHT!` }]);
+    });
+
+    socket.on('round_tick', ({ remaining }) => {
+      setRoundRemaining(remaining);
+    });
+
+    socket.on('round_over', ({ leaderboard: lb, winner }) => {
+      setPhase('gameover');
+      setFinalLeaderboard(lb || []);
+      setRoundWinner(winner);
+      setChatMessages(prev => [...prev, {
+        system: true,
+        text: `🏆 Round over! Winner: ${winner?.name || 'nobody'} with ${winner?.score || 0} pts`
+      }]);
     });
 
     socket.on('cells_claimed', ({ cells }) => {
@@ -122,16 +160,8 @@ export default function useGameSocket() {
     });
 
     socket.on('game_mode_changed', ({ mode }) => {
-      setGameMode(mode);
+      setGameModeState(mode);
       addToast({ type: 'system', icon: '🎮', title: 'Mode Changed', body: `Now playing: ${mode.toUpperCase()}` });
-    });
-
-    socket.on('grid_reset', ({ gridState, leaderboard: lb }) => {
-      setGrid(gridState.grid || {});
-      setGridPowerups(gridState.activePowerups || []);
-      setLeaderboard(lb || []);
-      setMyStats({ blocks: 0, score: 0, streak: 0, claims: 0 });
-      addToast({ type: 'system', icon: '↺', title: 'Grid Reset', body: 'The board has been cleared!' });
     });
 
     return () => socket.removeAllListeners();
@@ -144,8 +174,7 @@ export default function useGameSocket() {
   const claimCell = useCallback((cellId, x, y) => {
     if (!myUser) return;
     socket.emit('claim_cell', { cellId, userId: myUser.userId });
-    const points = 1; // optimistic
-    addFloatScore(`+${points}`, myUser.color, x, y);
+    addFloatScore(`+1`, myUser.color, x, y);
   }, [myUser, addFloatScore]);
 
   const sendChat = useCallback((message) => {
@@ -156,8 +185,8 @@ export default function useGameSocket() {
     socket.emit('set_game_mode', { mode });
   }, []);
 
-  const resetGrid = useCallback(() => {
-    socket.emit('reset_grid');
+  const startRound = useCallback((duration) => {
+    socket.emit('start_round', { duration });
   }, []);
 
   const activatePowerup = useCallback((powerupId) => {
@@ -168,6 +197,7 @@ export default function useGameSocket() {
     connected, joined, myUser, grid, leaderboard, teamStats, playerCount,
     activePowerups, gridPowerups, gameMode, zones, myStats, toasts,
     chatMessages, animatedCells, floatScores, streak,
-    join, claimCell, sendChat, setMode, resetGrid, activatePowerup,
+    phase, roundRemaining, roundEndTime, roundWinner, finalLeaderboard,
+    join, claimCell, sendChat, setMode, startRound, activatePowerup,
   };
 }

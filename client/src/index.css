@@ -560,3 +560,78 @@ body {
   :root { --cell-size: 11px; }
   .stat-pill { display: none; }
 }
+
+/* ── LOBBY SCREEN ── */
+.lobby-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(3,7,18,0.85); backdrop-filter: blur(16px);
+  display: flex; align-items: center; justify-content: center;
+}
+.lobby-box {
+  background: var(--bg-card); border: 1px solid var(--border-glow);
+  border-radius: 24px; padding: 40px;
+  width: 460px; max-width: 92vw; text-align: center;
+  box-shadow: 0 0 60px rgba(0,212,255,0.12), 0 40px 80px rgba(0,0,0,0.5);
+  animation: modal-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lobby-duration-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 12px;
+}
+.lobby-durations {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px;
+}
+.duration-card {
+  padding: 14px 10px; border-radius: 12px;
+  background: rgba(0,212,255,0.05); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.2s;
+}
+.duration-card:hover { border-color: var(--cyan); background: var(--cyan-dim); }
+.duration-card.selected {
+  border-color: var(--cyan); background: var(--cyan-dim);
+  box-shadow: 0 0 16px rgba(0,212,255,0.25);
+}
+.duration-label { font-size: 18px; font-weight: 800; color: var(--cyan); margin-bottom: 4px; }
+.duration-desc { font-size: 11px; color: var(--text-dim); }
+
+/* ── WINNER SCREEN ── */
+.winner-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(3,7,18,0.92); backdrop-filter: blur(20px);
+  display: flex; align-items: center; justify-content: center;
+}
+.winner-box {
+  background: var(--bg-card); border: 1px solid rgba(255,204,0,0.4);
+  border-radius: 24px; padding: 40px;
+  width: 480px; max-width: 92vw; text-align: center;
+  box-shadow: 0 0 80px rgba(255,204,0,0.15), 0 40px 80px rgba(0,0,0,0.5);
+  animation: modal-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.winner-announcement { margin-bottom: 24px; }
+.winner-avatar {
+  width: 64px; height: 64px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 900; margin: 0 auto 12px;
+}
+.winner-name { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
+.winner-score { font-size: 14px; color: var(--text-secondary); }
+.winner-leaderboard { margin-bottom: 24px; text-align: left; }
+.winner-lb-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 10px; margin-bottom: 4px;
+  background: rgba(0,212,255,0.04);
+}
+.winner-lb-row.top {
+  background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2);
+}
+.winner-rank { font-size: 16px; width: 26px; flex-shrink: 0; }
+.winner-lb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.winner-lb-name { flex: 1; font-size: 14px; font-weight: 600; }
+.winner-lb-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+.winner-lb-blocks { font-size: 11px; color: var(--text-dim); }
+
+/* ── ROUND TIMER URGENT PULSE ── */
+@keyframes pulse-urgent {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}

@@ -86,13 +86,17 @@ const TEAMS = {
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 let gameState = {
-  grid: {},        // cellId → { userId, color, name, team, timestamp }
-  users: {},       // userId → user object
-  claims: {},      // cellId → timestamp (for cooldown)
+  grid: {},           // cellId → { userId, color, name, team, timestamp }
+  users: {},          // userId → user object
+  claims: {},         // cellId → timestamp (for cooldown)
   activePowerups: [], // powerups on the grid
-  gameMode: 'ffa', // 'ffa' | 'teams' | 'zones'
+  gameMode: 'ffa',   // 'ffa' | 'teams' | 'zones'
   startTime: Date.now(),
-  roundDuration: 0, // 0 = endless
+  // Round system
+  phase: 'lobby',    // 'lobby' | 'active' | 'gameover'
+  roundDuration: 0,  // seconds chosen at start
+  roundEndTime: 0,   // epoch ms when round ends
+  roundTimer: null,  // interval reference
 };
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -268,6 +272,9 @@ io.on('connection', (socket) => {
     socket.join('game');
 
     // Send initial state to the new player
+    const remaining = gameState.phase === 'active'
+      ? Math.max(0, Math.ceil((gameState.roundEndTime - Date.now()) / 1000))
+      : 0;
     socket.emit('joined', {
       userId,
       user: currentUser,
@@ -275,6 +282,9 @@ io.on('connection', (socket) => {
       leaderboard: buildLeaderboard(),
       teamStats: buildTeamStats(),
       playerCount: Object.keys(gameState.users).length,
+      phase: gameState.phase,
+      roundRemaining: remaining,
+      roundEndTime: gameState.roundEndTime,
     });
 
     // Notify all others
@@ -292,6 +302,7 @@ io.on('connection', (socket) => {
   // ── CLAIM CELL ──────────────────────────────────────────────────────────
   socket.on('claim_cell', ({ cellId, userId }) => {
     if (!currentUser || currentUser.userId !== userId) return;
+    if (gameState.phase !== 'active') return; // only allow during active round
 
     // Validate cellId
     const cid = parseInt(cellId);
@@ -457,17 +468,50 @@ io.on('connection', (socket) => {
     });
   });
 
-  // ── RESET GRID ───────────────────────────────────────────────────────────
-  socket.on('reset_grid', () => {
+  // ── START ROUND ──────────────────────────────────────────────────────────
+  socket.on('start_round', ({ duration }) => {
+    // duration in seconds: 120, 300, 600
+    const secs = [120, 300, 600].includes(duration) ? duration : 300;
+    if (gameState.roundTimer) clearInterval(gameState.roundTimer);
+
+    // Reset all state
     gameState.grid = {};
     gameState.claims = {};
     gameState.activePowerups = [];
     Object.values(gameState.users).forEach((u) => {
-      u.blocks = 0;
-      u.score = 0;
-      u.streak = 0;
+      u.blocks = 0; u.score = 0; u.streak = 0; u.maxStreak = 0;
+      u.totalClaims = 0; u.powerupsUsed = 0; u.achievements = []; u.activePowerups = [];
     });
-    io.to('game').emit('grid_reset', { gridState: getFullGridState(), leaderboard: buildLeaderboard() });
+
+    gameState.phase = 'active';
+    gameState.roundDuration = secs;
+    gameState.roundEndTime = Date.now() + secs * 1000;
+
+    io.to('game').emit('round_started', {
+      duration: secs,
+      endTime: gameState.roundEndTime,
+      gridState: getFullGridState(),
+      leaderboard: buildLeaderboard(),
+    });
+
+    // Tick every second
+    gameState.roundTimer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((gameState.roundEndTime - Date.now()) / 1000));
+      io.to('game').emit('round_tick', { remaining });
+
+      if (remaining <= 0) {
+        clearInterval(gameState.roundTimer);
+        gameState.roundTimer = null;
+        gameState.phase = 'gameover';
+        const finalLeaderboard = buildLeaderboard();
+        const winner = finalLeaderboard[0] || null;
+        io.to('game').emit('round_over', {
+          leaderboard: finalLeaderboard,
+          teamStats: buildTeamStats(),
+          winner,
+        });
+      }
+    }, 1000);
   });
 
   // ── CHAT ─────────────────────────────────────────────────────────────────

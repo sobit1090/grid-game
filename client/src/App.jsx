@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import useGameSocket from './hooks/useGameSocket';
 
 import JoinModal from './components/JoinModal';
@@ -11,6 +11,9 @@ import ChatSection from './components/Chat/ChatSection';
 import PowerupPanel from './components/PowerupPanel';
 import Toast from './components/Toast';
 import StreakBanner from './components/StreakBanner';
+import LobbyScreen from './components/LobbyScreen';
+import WinnerScreen from './components/WinnerScreen';
+import RoundTimer from './components/RoundTimer';
 
 // Starfield background
 function Starfield() {
@@ -51,12 +54,13 @@ export default function App() {
     connected, joined, myUser, grid, leaderboard, teamStats, playerCount,
     activePowerups, gridPowerups, gameMode, zones, myStats, toasts,
     chatMessages, animatedCells, floatScores, streak,
-    join, claimCell, sendChat, setMode, resetGrid, activatePowerup,
+    phase, roundRemaining, roundEndTime, roundWinner, finalLeaderboard,
+    join, claimCell, sendChat, setMode, startRound, activatePowerup,
   } = useGameSocket();
 
   const claimedCount = useMemo(() => Object.keys(grid).length, [grid]);
 
-  // Float score elements rendered at fixed positions
+  // Float score elements
   const floatScoreEls = floatScores.map(fs => (
     <div
       key={fs.id}
@@ -71,7 +75,22 @@ export default function App() {
     <>
       <Starfield />
 
+      {/* Step 1: Enter name */}
       {!joined && <JoinModal onJoin={join} />}
+
+      {/* Step 2: Lobby — choose round duration */}
+      {joined && phase === 'lobby' && (
+        <LobbyScreen playerCount={playerCount} onStart={startRound} />
+      )}
+
+      {/* Step 3: Game over — show winner */}
+      {joined && phase === 'gameover' && (
+        <WinnerScreen
+          leaderboard={finalLeaderboard}
+          winner={roundWinner}
+          onRestart={startRound}
+        />
+      )}
 
       <Toast toasts={toasts} />
       <StreakBanner streak={streak} />
@@ -83,21 +102,22 @@ export default function App() {
           playerCount={playerCount}
           claimedCells={claimedCount}
           gameMode={gameMode}
-          onReset={joined ? resetGrid : null}
+          // Timer replaces the old Reset button in the header
+          timerEl={phase === 'active' ? (
+            <RoundTimer remaining={roundRemaining} endTime={roundEndTime} />
+          ) : null}
           onToggleSound={() => setSoundOn(s => !s)}
           soundOn={soundOn}
         />
 
         <div className="main-body" id="main">
-          {/* LEFT SIDEBAR: Player info + Leaderboard + Minimap */}
+          {/* LEFT SIDEBAR */}
           <aside className="sidebar sidebar-left" id="sidebar-left">
             <PlayerCard myUser={myUser} myStats={myStats} />
-
             <div className="sidebar-section">
               <div className="sidebar-title">🏆 <span>Leaderboard</span></div>
             </div>
             <Leaderboard entries={leaderboard} myUserId={myUser?.userId} />
-
             <Minimap grid={grid} />
           </aside>
 
@@ -113,9 +133,8 @@ export default function App() {
             onSetMode={setMode}
           />
 
-          {/* RIGHT SIDEBAR: Powerups + Team stats + Chat */}
+          {/* RIGHT SIDEBAR */}
           <aside className="sidebar sidebar-right" id="sidebar-right">
-            {/* Team stats (teams mode) */}
             {gameMode === 'teams' && (
               <div className="sidebar-section">
                 <div className="sidebar-title">👥 <span>Teams</span></div>
@@ -134,7 +153,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Zone legend (zones mode) */}
             {gameMode === 'zones' && (
               <div className="sidebar-section">
                 <div className="sidebar-title">🎯 <span>Zones</span></div>
@@ -158,13 +176,11 @@ export default function App() {
               </div>
             )}
 
-            {/* Powerups */}
             <div className="sidebar-section">
               <div className="sidebar-title">⚡ <span>Powerups</span></div>
               <PowerupPanel powerups={activePowerups} onActivate={activatePowerup} />
             </div>
 
-            {/* Chat */}
             <ChatSection messages={chatMessages} onSend={sendChat} />
           </aside>
         </div>

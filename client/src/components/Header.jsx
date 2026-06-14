@@ -1,4 +1,4 @@
-export default function Header({ connected, playerCount, claimedCells, gameMode, onReset, onToggleSound, soundOn }) {
+export default function Header({ connected, playerCount, claimedCells, gameMode, timerEl, onToggleSound, soundOn }) {
   return (
     <header className="header">
       <div className="header-brand">
@@ -24,6 +24,8 @@ export default function Header({ connected, playerCount, claimedCells, gameMode,
           <span className="icon">🎮</span>
           <span className="val" id="h-mode">{gameMode.toUpperCase()}</span>
         </div>
+        {/* Live round timer — shown during active round */}
+        {timerEl}
         <div className={`connection-badge ${connected ? 'connected' : 'disconnected'}`} id="connection-badge">
           <div className="dot" />
           <span id="conn-text">{connected ? 'Live' : 'Connecting...'}</span>
@@ -31,9 +33,6 @@ export default function Header({ connected, playerCount, claimedCells, gameMode,
       </div>
 
       <div className="header-right">
-        {onReset && (
-          <button className="btn btn-danger" id="reset-btn" onClick={onReset}>↺ Reset</button>
-        )}
         <button className="btn btn-ghost" id="sound-btn" onClick={onToggleSound}>
           {soundOn ? '🔊' : '🔇'} Sound
         </button>
