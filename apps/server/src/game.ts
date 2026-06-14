@@ -29,6 +29,7 @@ export class GameManager {
   // Maps socketId -> { lobbyCode, username }
   private socketToPlayer: Map<string, { lobbyCode: string; username: string }> = new Map();
   private lobbyTimers: Map<string, NodeJS.Timeout> = new Map();
+  private playerDbIds: Map<string, string> = new Map(); // username -> dbId cache
 
   public onGameEnded: ((lobbyCode: string) => void) | null = null;
 
@@ -112,6 +113,10 @@ export class GameManager {
     const lobby = this.getLobby(code);
     if (!lobby) return null;
 
+    // Ensure player exists in DB and cache their DB ID
+    const dbPlayer = await this.getOrCreatePlayer(username, color);
+    this.playerDbIds.set(username, dbPlayer.id);
+
     // Check if player is already in this lobby (reconnect handling)
     let player = lobby.players.get(username);
     if (player) {
@@ -120,9 +125,6 @@ export class GameManager {
       player.socketId = socketId;
       player.color = color; // sync color
     } else {
-      // Ensure player exists in DB
-      await this.getOrCreatePlayer(username, color);
-
       player = {
         id: username, // using username as unique identifier
         socketId,
@@ -228,6 +230,30 @@ export class GameManager {
     return lobby;
   }
 
+  // Helper to update PostgreSQL and save move log asynchronously
+  private async persistClaim(gameId: string, playerDbId: string, cellIndex: number, x: number, y: number) {
+    try {
+      await prisma.$executeRaw`
+        UPDATE "Cell"
+        SET "ownerId" = ${playerDbId}
+        WHERE "gameId" = ${gameId}
+          AND "x" = ${x}
+          AND "y" = ${y}
+          AND "ownerId" IS NULL
+      `;
+
+      await prisma.move.create({
+        data: {
+          gameId,
+          playerId: playerDbId,
+          cellIndex
+        }
+      });
+    } catch (err) {
+      console.error('Async DB Claim persistence error:', err);
+    }
+  }
+
   // Claim a cell with Concurrency Conflict Handling using optimistic database checking
   public async claimCell(
     code: string,
@@ -245,51 +271,32 @@ export class GameManager {
 
     if (x < 0 || x >= 30 || y < 0 || y >= 30) return null;
 
-    // Concurrency Lock: Query DB to check if ownerId is currently null, and update if it is.
-    // This is executed as a single atomic operation in Postgres.
-    try {
-      const dbPlayer = await prisma.player.findUnique({
-        where: { username }
-      });
-      if (!dbPlayer) return null;
-
-      // Optimistic update: search for the cell belonging to this game, at x/y, where ownerId is null
-      const updatedCells = await prisma.$executeRaw`
-        UPDATE "Cell"
-        SET "ownerId" = ${dbPlayer.id}
-        WHERE "gameId" = ${lobby.gameId}
-          AND "x" = ${x}
-          AND "y" = ${y}
-          AND "ownerId" IS NULL
-      `;
-
-      // If updatedCells === 0, it means someone else already claimed it! The query updated 0 rows.
-      if (updatedCells === 0) {
-        return { success: false, x, y, color: '', lobby };
-      }
-
-      // Claim succeeded!
-      lobby.cells.set(cellIndex, username);
-
-      // Record move in DB asynchronously (for replay logs)
-      prisma.move.create({
-        data: {
-          gameId: lobby.gameId,
-          playerId: dbPlayer.id,
-          cellIndex
-        }
-      }).catch(err => console.error('Error saving move:', err));
-
-      // Check if board is full (900 cells claimed)
-      if (lobby.cells.size === 900) {
-        await this.endGame(lobby);
-      }
-
-      return { success: true, x, y, color: player.color, lobby };
-    } catch (error) {
-      console.error('Database claim error:', error);
-      return null;
+    // Authoritative check in memory (0ms)
+    if (lobby.cells.has(cellIndex)) {
+      return { success: false, x, y, color: '', lobby };
     }
+
+    // Set owner in-memory immediately
+    lobby.cells.set(cellIndex, username);
+
+    // Persist to DB in the background
+    const cachedDbId = this.playerDbIds.get(username);
+    if (cachedDbId) {
+      this.persistClaim(lobby.gameId, cachedDbId, cellIndex, x, y);
+    } else {
+      // Cache miss fallback
+      this.getOrCreatePlayer(username, player.color).then(dbPlayer => {
+        this.playerDbIds.set(username, dbPlayer.id);
+        this.persistClaim(lobby.gameId!, dbPlayer.id, cellIndex, x, y);
+      }).catch(err => console.error('Cache miss player retrieval error:', err));
+    }
+
+    // Check if board is full (900 cells claimed)
+    if (lobby.cells.size === 900) {
+      await this.endGame(lobby);
+    }
+
+    return { success: true, x, y, color: player.color, lobby };
   }
 
   // End the game
