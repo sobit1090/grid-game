@@ -32,7 +32,9 @@ const Cell = memo(function Cell({
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}
-    />
+    >
+      {!cellData && <span className="cell-number">{cellId}</span>}
+    </div>
   );
 });
 

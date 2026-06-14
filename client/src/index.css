@@ -337,6 +337,11 @@ body {
   100% { transform: scale(1); }
 }
 .cell.my-claim { box-shadow: 0 0 6px var(--owner-color, transparent); }
+.cell-number {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 6px; color: rgba(255,255,255,0.15); pointer-events: none;
+}
+.cell:hover .cell-number { color: rgba(0,212,255,0.6); font-size: 8px; }
 
 /* ── CELL TOOLTIP ── */
 .cell-tooltip {
