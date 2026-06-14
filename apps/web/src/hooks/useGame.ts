@@ -193,16 +193,10 @@ export function useGame(lobbyCodeFromUrl: string | null) {
 
   // Leave lobby and go back to welcome screen
   const leaveLobby = useCallback(() => {
-    // Clear localStorage lobby reference
+    // Remove lobby code from localStorage to prevent auto-rejoin
     localStorage.removeItem('grid_lobby_code');
 
-    // Disconnect and reconnect socket to leave the room
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current.connect();
-    }
-
-    // Reset all game state
+    // Reset all game state — socket stays connected but we clear lobby state
     setLobbyCode(null);
     setStatus('LOBBY');
     setPlayers([]);

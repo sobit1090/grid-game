@@ -95,8 +95,6 @@ function GameContent() {
   useEffect(() => {
     if (lobbyCode) {
       router.replace(`/?lobby=${lobbyCode}`);
-    } else {
-      router.replace('/');
     }
   }, [lobbyCode, router]);
 
@@ -111,7 +109,8 @@ function GameContent() {
     setFormError(null);
 
     try {
-      const res = await fetch('http://localhost:3001/api/lobby/create', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/api/lobby/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
