@@ -76,7 +76,7 @@ export default function App() {
       <Starfield />
 
       {/* Step 1: Enter name */}
-      {!joined && <JoinModal onJoin={join} />}
+      {!joined && <JoinModal onJoin={join} connected={connected} />}
 
       {/* Step 2: Lobby — choose round duration */}
       {joined && phase === 'lobby' && (

@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function JoinModal({ onJoin }) {
+export default function JoinModal({ onJoin, connected }) {
   const [name, setName] = useState('');
   const inputRef = useRef(null);
 
   useEffect(() => inputRef.current?.focus(), []);
 
   const handleJoin = () => {
+    if (!connected) return;
     const trimmed = name.trim() || 'Anonymous';
     onJoin(trimmed);
   };
@@ -42,8 +43,28 @@ export default function JoinModal({ onJoin }) {
             onKeyDown={e => e.key === 'Enter' && handleJoin()}
           />
         </div>
-        <button className="join-btn" id="join-btn" onClick={handleJoin}>
-          ⚡ ENTER THE GRID
+        {!connected && (
+          <div className="connection-error-msg" style={{
+            color: 'var(--red)',
+            fontSize: '13px',
+            marginTop: '-10px',
+            marginBottom: '15px',
+            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+          }}>
+            <span>⚠️</span> Offline: Connecting to server...
+          </div>
+        )}
+        <button
+          className="join-btn"
+          id="join-btn"
+          onClick={handleJoin}
+          disabled={!connected}
+        >
+          {connected ? '⚡ ENTER THE GRID' : '🔌 CONNECTING TO SERVER...'}
         </button>
       </div>
     </div>
