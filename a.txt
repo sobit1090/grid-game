@@ -1,0 +1,38 @@
+Build a real-time shared grid app. Think of it like a shared board or map made up of hundreds of blocks (tiles / pixels / cells — totally up to you). Anyone who opens the site can click a block and capture it.
+
+
+The fun part 👇
+There can be many users online at the same time, and everyone should see changes instantly. If someone captures a block, all other users should see it happen in real time.
+
+
+What the app should do:
+→ Show a grid/map with hundreds of blocks
+→ Blocks can be unclaimed or owned by a user
+→ When a user clicks a block, it gets assigned to them and everyone else sees the update immediately
+→ Multiple users should be able to play at the same time without things breaking 😅
+
+
+Tech expectations:
+→ Frontend: Clean, interactive UI (this matters a lot)
+→ Backend: Handles users, block ownership, and conflicts
+→ Real-time: Use WebSockets (or similar) so updates are instant
+→ We're explicitly looking for backend + real-time thinking, not just UI
+
+
+UI matters ✨
+This is NOT a "just make it work" task. We care about visual clarity, smooth interactions, and the overall feel. Simple + clean > complex + messy.
+
+
+Bonus stuff (not required, but cool):
+→ User names or colors
+→ Rules (cooldowns, lock time, area control, etc.)
+→ Leaderboard or stats
+→ Zoom/pan for big maps
+→ Animations or micro-interactions
+
+
+Tech stack: Use whatever you're comfortable with. Frontend, backend, database, real-time layer — your call. Just explain your choices.
+
+
+What we're looking for:
+We're not expecting a perfect product. We're evaluating how you think, how you design systems, how you handle real-time problems, your UI sense, and code quality. A smaller, well-built solution beats a huge half-done one.
