@@ -22,6 +22,7 @@ export interface InMemoryLobby {
   endTime: number | null;
   winnerUsername: string | null;
   gameDuration: number; // in seconds
+  hostUsername: string | null; // first player (1st game) or winner (rematches)
 }
 
 export class GameManager {
@@ -68,7 +69,8 @@ export class GameManager {
       startTime: null,
       endTime: null,
       winnerUsername: null,
-      gameDuration: 300 // default 5 minutes
+      gameDuration: 300, // default 5 minutes
+      hostUsername: null // set to first player who joins
     };
 
     this.lobbies.set(code, lobby);
@@ -126,13 +128,18 @@ export class GameManager {
       player.color = color; // sync color
     } else {
       player = {
-        id: username, // using username as unique identifier
+        id: username,
         socketId,
         username,
         color,
         isReady: false
       };
       lobby.players.set(username, player);
+
+      // First player to join becomes the host
+      if (!lobby.hostUsername) {
+        lobby.hostUsername = username;
+      }
     }
 
     this.socketToPlayer.set(socketId, { lobbyCode: lobby.code, username });
@@ -166,6 +173,10 @@ export class GameManager {
   public async startGame(code: string): Promise<InMemoryLobby | null> {
     const lobby = this.getLobby(code);
     if (!lobby || lobby.status !== 'LOBBY' || lobby.players.size === 0) return null;
+
+    // Lock status immediately (in-memory mutex) BEFORE any async DB operations
+    // This prevents duplicate game starts from rapid button clicks
+    lobby.status = 'ACTIVE';
 
     // Create Game in DB
     const game = await prisma.game.create({
@@ -388,10 +399,13 @@ export class GameManager {
     }
   }
 
-  // Set game duration during LOBBY phase
-  public setDuration(code: string, duration: number): InMemoryLobby | null {
+  // Set game duration during LOBBY phase — only the host can change it
+  public setDuration(code: string, username: string, duration: number): InMemoryLobby | null {
     const lobby = this.getLobby(code);
     if (!lobby || lobby.status !== 'LOBBY') return null;
+
+    // Only host (winner or first player) can change duration
+    if (lobby.hostUsername && lobby.hostUsername !== username) return null;
 
     // Allow 2 min (120s), 5 min (300s), 10 min (600s)
     if ([120, 300, 600].includes(duration)) {
@@ -417,6 +431,8 @@ export class GameManager {
       lobby.status = 'LOBBY';
       lobby.gameId = null;
       lobby.cells.clear();
+      // Winner of the last round becomes the host for next round
+      lobby.hostUsername = lobby.winnerUsername || lobby.hostUsername;
       lobby.winnerUsername = null;
       lobby.startTime = null;
       lobby.endTime = null;
@@ -492,7 +508,8 @@ export class GameManager {
       leaderboard,
       onlineCount: lobby.players.size,
       gameDuration: lobby.gameDuration,
-      endTime: lobby.endTime
+      endTime: lobby.endTime,
+      hostUsername: lobby.hostUsername
     };
   }
 

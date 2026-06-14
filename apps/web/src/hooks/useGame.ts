@@ -20,6 +20,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
   const [winnerUsername, setWinnerUsername] = useState<string | null>(null);
   const [gameDuration, setGameDurationState] = useState<number>(300);
   const [endTime, setEndTime] = useState<number | null>(null);
+  const [hostUsername, setHostUsername] = useState<string | null>(null);
 
   // Session details
   const [username, setUsername] = useState<string | null>(null);
@@ -77,6 +78,9 @@ export function useGame(lobbyCodeFromUrl: string | null) {
       if (typeof lobbyData.endTime === 'number' || lobbyData.endTime === null) {
         setEndTime(lobbyData.endTime);
       }
+      if (lobbyData.hostUsername !== undefined) {
+        setHostUsername(lobbyData.hostUsername);
+      }
     });
 
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, (data) => {
@@ -116,6 +120,9 @@ export function useGame(lobbyCodeFromUrl: string | null) {
       }
       if (typeof lobbyData.endTime === 'number' || lobbyData.endTime === null) {
         setEndTime(lobbyData.endTime);
+      }
+      if (lobbyData.hostUsername !== undefined) {
+        setHostUsername(lobbyData.hostUsername);
       }
     });
 
@@ -178,18 +185,19 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     });
   }, [lobbyCode, username]);
 
-  // Set match duration limit
+  // Set match duration limit — only host can change it
   const setGameDuration = useCallback((seconds: number) => {
     // Update local state immediately for instant visual feedback
     setGameDurationState(seconds);
 
-    if (!socketRef.current || !lobbyCode || !connected) return;
+    if (!socketRef.current || !lobbyCode || !connected || !username) return;
 
     socketRef.current.emit(SOCKET_EVENTS.SET_DURATION, {
       code: lobbyCode,
+      username,
       duration: seconds
     });
-  }, [lobbyCode, connected]);
+  }, [lobbyCode, connected, username]);
 
   // Leave lobby and go back to welcome screen
   const leaveLobby = useCallback(() => {
@@ -206,6 +214,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     setWinnerUsername(null);
     setGameDurationState(300);
     setEndTime(null);
+    setHostUsername(null);
     setSocketError(null);
   }, []);
 
@@ -223,6 +232,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     socketError,
     gameDuration,
     endTime,
+    hostUsername,
     joinGame,
     claimCell,
     triggerPlayAgain,

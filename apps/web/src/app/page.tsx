@@ -43,7 +43,8 @@ function GameContent() {
     triggerPlayAgain,
     startMatch,
     setGameDuration,
-    leaveLobby
+    leaveLobby,
+    hostUsername
   } = useGame(lobbyCodeFromUrl);
 
   // Welcome Screen Form States
@@ -51,6 +52,7 @@ function GameContent() {
   const [formColor, setFormColor] = useState(PRESET_COLORS[0]);
   const [formCode, setFormCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Floating text captures list
@@ -90,6 +92,13 @@ function GameContent() {
     if (cachedColor) setFormColor(cachedColor);
     if (lobbyCodeFromUrl) setFormCode(lobbyCodeFromUrl.toUpperCase());
   }, [lobbyCodeFromUrl]);
+
+  // Reset isLaunching when status changes away from LOBBY
+  useEffect(() => {
+    if (status !== 'LOBBY') {
+      setIsLaunching(false);
+    }
+  }, [status]);
 
   // Sync lobby code to URL when joined
   useEffect(() => {
@@ -321,9 +330,14 @@ function GameContent() {
                   <h3 className="text-lg font-bold text-white">Lobby Setup Phase</h3>
                   <p className="text-xs text-slate-400 max-w-sm">Ready to begin? Choose game duration and start the match to compete for cells.</p>
                   
-                  {/* Duration Selector */}
+                  {/* Duration Selector — only host can change it */}
                   <div className="flex flex-col items-center space-y-2 py-2">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Match Duration</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                      Match Duration
+                      {hostUsername && username !== hostUsername && (
+                        <span className="ml-2 text-amber-500/80">👑 {hostUsername} is choosing</span>
+                      )}
+                    </span>
                     <div className="flex gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
                       {[
                         { label: '2 Min', value: 120 },
@@ -332,25 +346,39 @@ function GameContent() {
                       ].map((opt) => (
                         <button
                           key={opt.value}
-                          onClick={() => setGameDuration(opt.value)}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                          onClick={() => username === hostUsername && setGameDuration(opt.value)}
+                          disabled={username !== hostUsername}
+                          title={username !== hostUsername ? `Only ${hostUsername} (winner) can change this` : ''}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                             gameDuration === opt.value
                               ? 'bg-indigo-600 text-white shadow-md'
                               : 'text-slate-400 hover:text-slate-200'
+                          } ${
+                            username !== hostUsername
+                              ? 'opacity-40 cursor-not-allowed'
+                              : 'cursor-pointer'
                           }`}
                         >
                           {opt.label}
                         </button>
                       ))}
                     </div>
+                    {hostUsername && username === hostUsername && (
+                      <span className="text-[10px] text-indigo-400/70">👑 You are the host — choose the duration</span>
+                    )}
                   </div>
 
                   <button
-                    onClick={startMatch}
-                    className="py-3 px-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg shadow-indigo-600/20 scale-100 hover:scale-[1.03] cursor-pointer"
+                    onClick={() => {
+                      if (isLaunching) return;
+                      setIsLaunching(true);
+                      startMatch();
+                    }}
+                    disabled={isLaunching}
+                    className="py-3 px-8 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg shadow-indigo-600/20 scale-100 hover:scale-[1.03] cursor-pointer"
                   >
                     <Play className="w-4 h-4 fill-white" />
-                    <span>Launch Game</span>
+                    <span>{isLaunching ? 'Launching...' : 'Launch Game'}</span>
                   </button>
                 </div>
               )}

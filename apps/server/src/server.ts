@@ -242,21 +242,21 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Set Duration during LOBBY phase
-  socket.on(SOCKET_EVENTS.SET_DURATION, async ({ code, duration }) => {
-    console.log(`[SERVER] SET_DURATION received for lobby: ${code}, duration: ${duration}`);
-    if (!code || typeof duration !== 'number') {
-      console.warn(`[SERVER] Invalid SET_DURATION payload: code=${code}, duration=${duration}`);
+  // Set Duration during LOBBY phase — only the host (winner or first player) can change
+  socket.on(SOCKET_EVENTS.SET_DURATION, async ({ code, username, duration }) => {
+    console.log(`[SERVER] SET_DURATION received for lobby: ${code}, by: ${username}, duration: ${duration}`);
+    if (!code || !username || typeof duration !== 'number') {
+      console.warn(`[SERVER] Invalid SET_DURATION payload`);
       return;
     }
     try {
-      const updatedLobby = gameManager.setDuration(code, duration);
+      const updatedLobby = gameManager.setDuration(code, username, duration);
       if (updatedLobby) {
         const roomName = `lobby_${updatedLobby.code}`;
-        console.log(`[SERVER] Lobby ${updatedLobby.code} duration updated to ${updatedLobby.gameDuration}. Broadcasting LOBBY_UPDATED.`);
+        console.log(`[SERVER] Lobby ${updatedLobby.code} duration updated to ${updatedLobby.gameDuration}s by host ${username}.`);
         io.to(roomName).emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(updatedLobby));
       } else {
-        console.warn(`[SERVER] Failed to update duration for lobby: ${code}. Lobby not found or not in LOBBY status.`);
+        console.warn(`[SERVER] setDuration rejected for lobby ${code} — not host or invalid state.`);
       }
     } catch (error) {
       console.error('Socket set_duration error:', error);
