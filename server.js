@@ -551,7 +551,7 @@ setInterval(() => {
 }, POWERUP_SPAWN_INTERVAL);
 
 // ─── HTTP ROUTES ─────────────────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'client/dist')));
 
 app.get('/api/status', (req, res) => {
   res.json({
@@ -567,6 +567,11 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/leaderboard', (req, res) => {
   res.json({ leaderboard: buildLeaderboard(), teamStats: buildTeamStats() });
+});
+
+// SPA Fallback for React Router (if needed)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/dist/index.html'));
 });
 
 // ─── START ───────────────────────────────────────────────────────────────────
