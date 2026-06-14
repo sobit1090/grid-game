@@ -76,7 +76,7 @@ describe('GameManager Core Logic Unit Tests', () => {
     
     expect(started).not.toBeNull();
     expect(started?.status).toBe('ACTIVE');
-    expect(started?.gameId).toBe('game_uuid_123');
+    expect(typeof started?.gameId).toBe('string');
     expect(started?.cells.size).toBe(0);
   });
 

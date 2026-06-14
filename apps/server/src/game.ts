@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { SharedPlayer, SharedCell, SOCKET_EVENTS } from 'shared';
+import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +32,7 @@ export class GameManager {
   private socketToPlayer: Map<string, { lobbyCode: string; username: string }> = new Map();
   private lobbyTimers: Map<string, NodeJS.Timeout> = new Map();
   private playerDbIds: Map<string, string> = new Map(); // username -> dbId cache
+  private gameCreationPromises: Map<string, Promise<any>> = new Map(); // gameId -> creation Promise
 
   public onGameEnded: ((lobbyCode: string) => void) | null = null;
 
@@ -178,44 +180,52 @@ export class GameManager {
     // This prevents duplicate game starts from rapid button clicks
     lobby.status = 'ACTIVE';
 
-    // Create Game in DB
-    const game = await prisma.game.create({
-      data: {
-        totalPlayers: lobby.players.size,
-        duration: 0
+    const gameId = randomUUID();
+
+    // Create Game, Update Lobby and Create Cells asynchronously in the background
+    const gamePromise = (async () => {
+      // Create Game in DB
+      await prisma.game.create({
+        data: {
+          id: gameId,
+          totalPlayers: lobby.players.size,
+          duration: 0
+        }
+      });
+
+      // Update Lobby in DB
+      await prisma.lobby.update({
+        where: { id: lobby.id },
+        data: {
+          status: 'ACTIVE',
+          gameId: gameId
+        }
+      });
+
+      // Prepare 900 cells in DB using createMany for extreme speed
+      const cellsData = [];
+      for (let x = 0; x < 30; x++) {
+        for (let y = 0; y < 30; y++) {
+          cellsData.push({
+            gameId: gameId,
+            x,
+            y,
+            ownerId: null
+          });
+        }
       }
-    });
 
-    // Update Lobby in DB
-    await prisma.lobby.update({
-      where: { id: lobby.id },
-      data: {
-        status: 'ACTIVE',
-        gameId: game.id
-      }
-    });
+      await prisma.cell.createMany({
+        data: cellsData
+      });
+    })();
 
-    // Prepare 900 cells in DB using createMany for extreme speed
-    const cellsData = [];
-    for (let x = 0; x < 30; x++) {
-      for (let y = 0; y < 30; y++) {
-        cellsData.push({
-          gameId: game.id,
-          x,
-          y,
-          ownerId: null
-        });
-      }
-    }
+    this.gameCreationPromises.set(gameId, gamePromise);
 
-    await prisma.cell.createMany({
-      data: cellsData
-    });
-
-    // Reset lobby cells and state
+    // Reset lobby cells and state in memory immediately
     lobby.cells.clear();
     lobby.status = 'ACTIVE';
-    lobby.gameId = game.id;
+    lobby.gameId = gameId;
     lobby.startTime = Date.now();
     lobby.endTime = lobby.startTime + lobby.gameDuration * 1000;
     lobby.winnerUsername = null;
@@ -244,6 +254,12 @@ export class GameManager {
   // Helper to update PostgreSQL and save move log asynchronously
   private async persistClaim(gameId: string, playerDbId: string, cellIndex: number, x: number, y: number) {
     try {
+      // Ensure the game and cells are created in the DB before claiming/updating
+      const creationPromise = this.gameCreationPromises.get(gameId);
+      if (creationPromise) {
+        await creationPromise;
+      }
+
       await prisma.$executeRaw`
         UPDATE "Cell"
         SET "ownerId" = ${playerDbId}
@@ -319,6 +335,12 @@ export class GameManager {
     if (timer) {
       clearTimeout(timer);
       this.lobbyTimers.delete(lobby.code);
+    }
+
+    // Ensure the game was created in DB before attempting to end/update it
+    const creationPromise = this.gameCreationPromises.get(lobby.gameId);
+    if (creationPromise) {
+      await creationPromise.catch(() => {});
     }
 
     lobby.status = 'GAMEOVER';
@@ -397,6 +419,8 @@ export class GameManager {
     if (this.onGameEnded) {
       this.onGameEnded(lobby.code);
     }
+
+    this.gameCreationPromises.delete(lobby.gameId);
   }
 
   // Set game duration during LOBBY phase — only the host can change it
