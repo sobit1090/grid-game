@@ -180,7 +180,11 @@ export function useGame(lobbyCodeFromUrl: string | null) {
 
   // Set match duration limit
   const setGameDuration = useCallback((seconds: number) => {
-    if (!socketRef.current || !lobbyCode || !connected) return;
+    console.log('[CLIENT] setGameDuration called:', seconds, 'lobbyCode:', lobbyCode, 'connected:', connected);
+    if (!socketRef.current || !lobbyCode || !connected) {
+      console.warn('[CLIENT] setGameDuration ignored. socket:', !!socketRef.current, 'lobbyCode:', lobbyCode, 'connected:', connected);
+      return;
+    }
 
     socketRef.current.emit(SOCKET_EVENTS.SET_DURATION, {
       code: lobbyCode,
