@@ -26,6 +26,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
   const [username, setUsername] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(null);
   const [socketError, setSocketError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Initialize socket connection
   useEffect(() => {
@@ -62,6 +63,11 @@ export function useGame(lobbyCodeFromUrl: string | null) {
 
     socket.on('disconnect', () => {
       setConnected(false);
+    });
+
+    socket.on('connect_error', () => {
+      // Only surface connection errors when user is already in a lobby
+      setConnectionError('Connection lost. Reconnecting...');
     });
 
     socket.on(SOCKET_EVENTS.LOBBY_UPDATED, (lobbyData) => {
@@ -229,7 +235,10 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     winnerUsername,
     username,
     color,
+    // socketError is only for server-sent game errors (e.g. duplicate username)
+    // connectionError is for socket transport failures, only shown inside a lobby
     socketError,
+    connectionError,
     gameDuration,
     endTime,
     hostUsername,

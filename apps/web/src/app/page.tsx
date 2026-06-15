@@ -36,6 +36,7 @@ function GameContent() {
     username,
     color,
     socketError,
+    connectionError,
     gameDuration,
     endTime,
     joinGame,
@@ -197,9 +198,9 @@ function GameContent() {
               <p className="text-slate-400 text-xs">Enter coordinates, claim cells, dominate the cosmos.</p>
             </div>
 
-            {(formError || socketError) && (
+            {formError && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center">
-                {formError || socketError}
+                {formError}
               </div>
             )}
 
@@ -311,6 +312,13 @@ function GameContent() {
               </div>
             </div>
           </header>
+
+          {/* Connection error banner inside lobby */}
+          {connectionError && !connected && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs p-2.5 rounded-lg text-center">
+              {connectionError}
+            </div>
+          )}
 
           {/* Body content */}
           <main className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
