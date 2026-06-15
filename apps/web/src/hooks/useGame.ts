@@ -141,6 +141,25 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     };
   }, [lobbyCodeFromUrl]);
 
+  // Create Lobby via socket (no REST call needed)
+  const createLobby = useCallback((user: string, clr: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!socketRef.current || !connected) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+      socketRef.current.emit(SOCKET_EVENTS.CREATE_LOBBY, { username: user, color: clr }, (res: { code?: string; error?: string }) => {
+        if (res?.error) {
+          reject(new Error(res.error));
+        } else if (res?.code) {
+          resolve(res.code);
+        } else {
+          reject(new Error('Failed to create lobby'));
+        }
+      });
+    });
+  }, [connected]);
+
   // Join Game
   const joinGame = useCallback((code: string, user: string, clr: string) => {
     if (!socketRef.current || !connected) return;
@@ -242,6 +261,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     gameDuration,
     endTime,
     hostUsername,
+    createLobby,
     joinGame,
     claimCell,
     triggerPlayAgain,

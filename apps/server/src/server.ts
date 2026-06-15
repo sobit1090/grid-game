@@ -124,6 +124,21 @@ app.get('/api/profile/:id', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`[+] Socket connected: ${socket.id}`);
 
+  // 0. Create Lobby via socket (avoids REST call dependency)
+  socket.on(SOCKET_EVENTS.CREATE_LOBBY, async ({ username, color }, callback) => {
+    try {
+      const lobby = await gameManager.createLobby();
+      if (typeof callback === 'function') {
+        callback({ code: lobby.code });
+      }
+    } catch (error) {
+      console.error('Socket create_lobby error:', error);
+      if (typeof callback === 'function') {
+        callback({ error: 'Failed to create lobby' });
+      }
+    }
+  });
+
   // 1. Join Game / Lobby
   socket.on(SOCKET_EVENTS.JOIN_GAME, async ({ code, username, color }) => {
     if (!code || !username || !color) {

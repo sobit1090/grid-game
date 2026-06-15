@@ -56,11 +56,13 @@ export interface LeaderboardEntry {
 export const SOCKET_EVENTS = {
   // Client -> Server
   JOIN_GAME: 'join_game',
+  CREATE_LOBBY: 'create_lobby',
   CAPTURE_CELL: 'capture_cell',
   PLAYER_READY: 'player_ready',
   SET_DURATION: 'set_duration',
 
   // Server -> Client
+  LOBBY_CREATED: 'lobby_created',
   CELL_UPDATED: 'cell_updated',
   LEADERBOARD_UPDATED: 'leaderboard_updated',
   GAME_OVER: 'game_over',

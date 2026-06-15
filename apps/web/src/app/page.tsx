@@ -39,6 +39,7 @@ function GameContent() {
     connectionError,
     gameDuration,
     endTime,
+    createLobby,
     joinGame,
     claimCell,
     triggerPlayAgain,
@@ -115,24 +116,19 @@ function GameContent() {
       return;
     }
 
+    if (!connected) {
+      setFormError('Not connected to server. Please wait and try again.');
+      return;
+    }
+
     setIsCreating(true);
     setFormError(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${apiUrl}/api/lobby/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (data.error) {
-        setFormError(data.error);
-        setIsCreating(false);
-        return;
-      }
-      joinGame(data.code, formUsername.trim(), formColor);
-    } catch (err) {
-      setFormError('Server unreachable. Is the backend running?');
+      const code = await createLobby(formUsername.trim(), formColor);
+      joinGame(code, formUsername.trim(), formColor);
+    } catch (err: any) {
+      setFormError(err?.message || 'Failed to create lobby. Please try again.');
     } finally {
       setIsCreating(false);
     }
