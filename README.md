@@ -88,8 +88,7 @@ pnpm dev
 Detailed specifications are available in the `/docs` directory:
 1. [FEATURES.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/FEATURES.md) - Deep dive of client interactions and game elements.
 2. [ARCHITECTURE.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/ARCHITECTURE.md) - System layout diagrams and data flows.
-3. [INTERVIEW_PREP.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/INTERVIEW_PREP.md) - 30+ answers to database locking, WebSockets scaling, and state caching questions.
-4. [TRADEOFFS.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/TRADEOFFS.md) - Pros & cons of choosing PostgreSQL, Next.js, and Socket.IO.
-5. [API.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/API.md) - Rest HTTP routes and real-time Socket event payloads.
-6. [DATABASE.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DATABASE.md) - Table schema breakdown and relational links.
-7. [DEPLOYMENT.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DEPLOYMENT.md) - Production guides for Vercel, Railway, and Neon Postgres.
+3. [TRADEOFFS.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/TRADEOFFS.md) - Pros & cons of choosing PostgreSQL, Next.js, and Socket.IO.
+4. [API.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/API.md) - Rest HTTP routes and real-time Socket event payloads.
+5. [DATABASE.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DATABASE.md) - Table schema breakdown and relational links.
+6. [DEPLOYMENT.md](file:///c:/Users/SOBIT/Desktop/Aplications/grid/docs/DEPLOYMENT.md) - Production guides for Vercel, Railway, and Neon Postgres.
