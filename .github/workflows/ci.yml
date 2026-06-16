@@ -39,38 +39,40 @@ jobs:
       with:
         version: 8
 
-    - name: Get PNPM Store Directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-    - name: Cache PNPM Dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-
-    - name: Install Dependencies
+    # 1. CI for grid-server
+    - name: Install grid-server Dependencies
       run: pnpm install --no-frozen-lockfile
+      working-directory: grid-server
 
     - name: Generate Prisma Client
-      run: pnpm --filter server prisma:generate
+      run: pnpm prisma generate
+      working-directory: grid-server
       env:
         DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
 
     - name: Push Prisma Schema
       run: npx prisma db push
+      working-directory: grid-server
       env:
         DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
 
-    - name: Build Codebases
+    - name: Build grid-server
       run: pnpm build
+      working-directory: grid-server
       env:
         DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
 
-    - name: Run Tests
+    - name: Run grid-server Tests
       run: pnpm test
+      working-directory: grid-server
       env:
         DATABASE_URL: "postgresql://sobit902266:sobit1033@localhost:5432/haqms"
+
+    # 2. CI for grid-web
+    - name: Install grid-web Dependencies
+      run: pnpm install --no-frozen-lockfile
+      working-directory: grid-web
+
+    - name: Build grid-web
+      run: pnpm build
+      working-directory: grid-web

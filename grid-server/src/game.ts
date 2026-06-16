@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { SharedPlayer, SharedCell, SOCKET_EVENTS } from 'shared';
+import { SharedPlayer, SharedCell, SOCKET_EVENTS } from './shared';
 import { randomUUID } from 'crypto';
 
 let prisma = new PrismaClient();
@@ -173,12 +173,17 @@ export class GameManager {
 
     const lobby = this.getLobby(lobbyCode);
     if (lobby) {
-      // In a production server, we might wait 10 seconds to allow reconnection.
-      // For this implementation, we keep them in lobby so they can rejoin/reconnect.
-      // We only update status if needed.
       const p = lobby.players.get(username);
       if (p && p.socketId === socketId) {
-        // Mark as disconnected or similar if needed. For now, we just keep their presence.
+        // If the lobby is NOT actively playing, remove the player and update host if they were host
+        if (lobby.status !== 'ACTIVE') {
+          lobby.players.delete(username);
+          
+          if (lobby.hostUsername === username) {
+            const remainingPlayers = Array.from(lobby.players.keys());
+            lobby.hostUsername = remainingPlayers.length > 0 ? remainingPlayers[0] : null;
+          }
+        }
       }
       return { lobbyCode, username, lobby };
     }
@@ -234,6 +239,11 @@ export class GameManager {
         data: cellsData
       });
     })();
+
+    // Catch background database creation failures (prevent unhandled promise rejection process crash)
+    gamePromise.catch(err => {
+      console.error(`[DB ERROR] Background game initialization failed for gameId ${gameId}:`, err);
+    });
 
     this.gameCreationPromises.set(gameId, gamePromise);
 
@@ -457,8 +467,8 @@ export class GameManager {
     // Only host (winner or first player) can change duration
     if (lobby.hostUsername && lobby.hostUsername !== username) return null;
 
-    // Allow 2 min (120s), 5 min (300s), 10 min (600s)
-    if ([120, 300, 600].includes(duration)) {
+    // Allow 5s (testing), 2 min (120s), 5 min (300s), 10 min (600s)
+    if ([5, 120, 300, 600].includes(duration)) {
       lobby.gameDuration = duration;
     }
     return lobby;

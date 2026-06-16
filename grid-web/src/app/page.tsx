@@ -404,6 +404,7 @@ function GameContent() {
                     </span>
                     <div className="flex gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
                       {[
+                        { label: '5 Sec', value: 5 },
                         { label: '2 Min', value: 120 },
                         { label: '5 Min', value: 300 },
                         { label: '10 Min', value: 600 }

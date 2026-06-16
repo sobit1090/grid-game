@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "grid-web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -15,7 +15,6 @@
     "next": "^15.0.0",
     "react": "^19.0.0-rc.0",
     "react-dom": "^19.0.0-rc.0",
-    "shared": "workspace:*",
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {

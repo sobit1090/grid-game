@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "grid-server",
   "version": "1.0.0",
   "private": true,
   "main": "dist/server.js",
@@ -8,6 +8,8 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "prisma:generate": "prisma generate",
+    "prisma:db-push": "prisma db push",
+    "postinstall": "prisma generate",
     "test": "jest --runInBand"
   },
   "dependencies": {
@@ -15,7 +17,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "shared": "workspace:*",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {

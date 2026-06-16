@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, RefreshCw, Users, Star } from 'lucide-react';
-import { LeaderboardEntry } from 'shared';
+import { LeaderboardEntry } from '../shared';
 
 interface WinnerModalProps {
   winnerUsername: string | null;

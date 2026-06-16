@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { SharedCell } from 'shared';
+import { SharedCell } from '../shared';
 
 interface CellProps {
   index: number;

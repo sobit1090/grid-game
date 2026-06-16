@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import { GameManager } from './game';
-import { SOCKET_EVENTS } from 'shared';
+import { SOCKET_EVENTS } from './shared';
 
 dotenv.config();
 
@@ -15,7 +15,9 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  pingInterval: 10000, // Ping every 10 seconds to keep connection alive on Render/proxies
+  pingTimeout: 5000    // Wait 5 seconds for response before declaring disconnect
 });
 
 const prisma = new PrismaClient();
@@ -156,15 +158,8 @@ io.on('connection', (socket) => {
       const roomName = `lobby_${lobby.code}`;
       socket.join(roomName);
 
-      // Notify room about join
-      io.to(roomName).emit(SOCKET_EVENTS.PLAYER_JOINED, {
-        username,
-        color,
-        onlineCount: lobby.players.size
-      });
-
-      // Send full lobby update to the joining player
-      socket.emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(lobby));
+      // Broadcast full lobby update to everyone in the room (ensures all players' lists and hosts sync immediately)
+      io.to(roomName).emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(lobby));
 
       // If lobby status is LOBBY and we have 1 player, check if we need to auto-start.
       // Wait, let's keep start command manual or triggered when first player says ready or when host clicks start.
@@ -284,10 +279,8 @@ io.on('connection', (socket) => {
       const result = gameManager.handleDisconnect(socket.id);
       if (result) {
         const roomName = `lobby_${result.lobbyCode}`;
-        io.to(roomName).emit(SOCKET_EVENTS.PLAYER_LEFT, {
-          username: result.username,
-          onlineCount: result.lobby.players.size
-        });
+        // Broadcast full lobby update to sync players list, online count, and host changes
+        io.to(roomName).emit(SOCKET_EVENTS.LOBBY_UPDATED, gameManager.serializeLobby(result.lobby));
         console.log(`[LEAVE] ${result.username} disconnected from lobby ${result.lobbyCode}`);
       }
     } catch (error) {

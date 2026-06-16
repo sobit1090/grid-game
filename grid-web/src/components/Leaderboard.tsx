@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LeaderboardEntry } from 'shared';
+import { LeaderboardEntry } from '../shared';
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];

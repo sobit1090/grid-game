@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { SOCKET_EVENTS, LeaderboardEntry } from 'shared';
+import { SOCKET_EVENTS, LeaderboardEntry } from '../shared';
 
 const getWsUrl = () => {
   let url = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
