@@ -8,7 +8,15 @@ interface PlayerCardProps {
   color: string;
 }
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const getWsUrl = () => {
+  let url = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !url.includes('localhost')) {
+    url = url.replace(/^http:/, 'https:');
+  }
+  return url;
+};
+
+const WS_URL = getWsUrl();
 
 export default function PlayerCard({ username, color }: PlayerCardProps) {
   const [stats, setStats] = useState<{ wins: number; totalGames: number } | null>(null);

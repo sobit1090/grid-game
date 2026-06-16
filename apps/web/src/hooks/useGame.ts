@@ -4,7 +4,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { SOCKET_EVENTS, LeaderboardEntry } from 'shared';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const getWsUrl = () => {
+  let url = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+  // Automatically upgrade to HTTPS if frontend is loaded via HTTPS (prevents Mixed Content blocks)
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && !url.includes('localhost')) {
+    url = url.replace(/^http:/, 'https:');
+  }
+  return url;
+};
+
+const WS_URL = getWsUrl();
 
 export function useGame(lobbyCodeFromUrl: string | null) {
   const socketRef = useRef<Socket | null>(null);
