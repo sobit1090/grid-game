@@ -44,6 +44,7 @@ function GameContent() {
     claimCell,
     triggerPlayAgain,
     startMatch,
+    launchMatchDirect,
     setGameDuration,
     leaveLobby,
     hostUsername
@@ -136,6 +137,34 @@ function GameContent() {
       joinGame(code, formUsername.trim(), formColor);
     } catch (err: any) {
       setFormError(err?.message || 'Failed to create lobby. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleQuickPlay = async () => {
+    if (!connected) {
+      setFormError('Not connected to server. Please wait and try again.');
+      return;
+    }
+
+    setIsCreating(true);
+    setFormError(null);
+
+    try {
+      const randomId = Math.floor(1000 + Math.random() * 9000);
+      const generatedName = `Player-${randomId}`;
+      const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+
+      setFormUsername(generatedName);
+      setFormColor(randomColor);
+
+      // Create lobby, join it, and launch match immediately
+      const code = await createLobby(generatedName, randomColor);
+      joinGame(code, generatedName, randomColor);
+      launchMatchDirect(code, generatedName);
+    } catch (err: any) {
+      setFormError(err?.message || 'Failed to start quick play. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -253,6 +282,15 @@ function GameContent() {
                 </div>
               </div>
             </div>
+            {/* Quick Play Button */}
+            <button
+              onClick={handleQuickPlay}
+              disabled={isCreating || !connected}
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/35 transition-all scale-100 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Play className="w-3.5 h-3.5 fill-white text-white" />
+              <span>{isCreating ? 'Launching Game...' : '⚡ Quick Play (Instant Game)'}</span>
+            </button>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800/80">
               {/* Create Lobby Tab */}

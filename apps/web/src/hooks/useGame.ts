@@ -225,6 +225,15 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     });
   }, [lobbyCode, username]);
 
+  // Launch match directly without waiting for React state update (critical for Quick Play)
+  const launchMatchDirect = useCallback((code: string, user: string) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit(SOCKET_EVENTS.PLAYER_READY, {
+      code,
+      username: user
+    });
+  }, []);
+
   // Set match duration limit — only host can change it
   const setGameDuration = useCallback((seconds: number) => {
     // Update local state immediately for instant visual feedback
@@ -281,6 +290,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     claimCell,
     triggerPlayAgain,
     startMatch,
+    launchMatchDirect,
     setGameDuration,
     leaveLobby
   };
