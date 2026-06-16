@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { SharedPlayer, SharedCell, SOCKET_EVENTS } from 'shared';
 import { randomUUID } from 'crypto';
 
-const prisma = new PrismaClient();
+let prisma = new PrismaClient();
 
 export interface GamePlayer {
   id: string;
@@ -36,6 +36,12 @@ export class GameManager {
 
   public onGameEnded: ((lobbyCode: string) => void) | null = null;
 
+  constructor(customPrisma?: PrismaClient) {
+    if (customPrisma) {
+      prisma = customPrisma;
+    }
+  }
+
   // Generate 5-character uppercase invite code
   private generateLobbyCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -52,17 +58,21 @@ export class GameManager {
   // Create new lobby and database record
   public async createLobby(): Promise<InMemoryLobby> {
     const code = this.generateLobbyCode();
+    const lobbyId = randomUUID();
     
-    // Create in Prisma
-    const dbLobby = await prisma.lobby.create({
+    // Create in Prisma in the background (prevent cold start DB blocking)
+    prisma.lobby.create({
       data: {
+        id: lobbyId,
         code,
         status: 'LOBBY'
       }
+    }).catch(err => {
+      console.error(`[DB ERROR] Failed to background-create lobby ${code}:`, err);
     });
 
     const lobby: InMemoryLobby = {
-      id: dbLobby.id,
+      id: lobbyId,
       code,
       status: 'LOBBY',
       gameId: null,
@@ -117,9 +127,14 @@ export class GameManager {
     const lobby = this.getLobby(code);
     if (!lobby) return null;
 
-    // Ensure player exists in DB and cache their DB ID
-    const dbPlayer = await this.getOrCreatePlayer(username, color);
-    this.playerDbIds.set(username, dbPlayer.id);
+    // Ensure player exists in DB and cache their DB ID in the background (prevent cold start DB blocking)
+    this.getOrCreatePlayer(username, color)
+      .then(dbPlayer => {
+        this.playerDbIds.set(username, dbPlayer.id);
+      })
+      .catch(err => {
+        console.error(`[DB ERROR] Background player getOrCreate failed for ${username}:`, err);
+      });
 
     // Check if player is already in this lobby (reconnect handling)
     let player = lobby.players.get(username);
@@ -337,12 +352,6 @@ export class GameManager {
       this.lobbyTimers.delete(lobby.code);
     }
 
-    // Ensure the game was created in DB before attempting to end/update it
-    const creationPromise = this.gameCreationPromises.get(lobby.gameId);
-    if (creationPromise) {
-      await creationPromise.catch(() => {});
-    }
-
     lobby.status = 'GAMEOVER';
     lobby.endTime = Date.now();
     const duration = Math.floor((lobby.endTime - (lobby.startTime || Date.now())) / 1000);
@@ -378,49 +387,66 @@ export class GameManager {
     const winnerUser = !isTie ? winner : null;
     lobby.winnerUsername = winnerUser;
 
-    let winnerDbId: string | null = null;
-    if (winnerUser) {
-      const winnerPlayer = await prisma.player.findUnique({
-        where: { username: winnerUser }
-      });
-      if (winnerPlayer) {
-        winnerDbId = winnerPlayer.id;
-      }
-    }
+    const gameId = lobby.gameId;
+    const lobbyDbId = lobby.id;
+    const playerUsernames = Array.from(lobby.players.keys());
+    const creationPromise = this.gameCreationPromises.get(gameId);
 
-    // Update DB Game record
-    await prisma.game.update({
-      where: { id: lobby.gameId },
-      data: {
-        winnerId: winnerDbId,
-        duration
-      }
-    });
-
-    // Update DB Lobby status
-    await prisma.lobby.update({
-      where: { id: lobby.id },
-      data: { status: 'GAMEOVER' }
-    });
-
-    // Update player game/wins stats
-    for (const username of lobby.players.keys()) {
-      const isPlayerWinner = username === winnerUser;
-      await prisma.player.update({
-        where: { username },
-        data: {
-          totalGames: { increment: 1 },
-          wins: isPlayerWinner ? { increment: 1 } : undefined
+    // Update database records asynchronously in the background
+    (async () => {
+      try {
+        // Ensure the game was created in DB before attempting to end/update it
+        if (creationPromise) {
+          await creationPromise.catch(() => {});
         }
-      }).catch(err => console.error(`Failed to update stats for ${username}`, err));
-    }
 
-    // Notify listeners that game has ended
+        let winnerDbId: string | null = null;
+        if (winnerUser) {
+          const winnerPlayer = await prisma.player.findUnique({
+            where: { username: winnerUser }
+          });
+          if (winnerPlayer) {
+            winnerDbId = winnerPlayer.id;
+          }
+        }
+
+        // Update DB Game record
+        await prisma.game.update({
+          where: { id: gameId },
+          data: {
+            winnerId: winnerDbId,
+            duration
+          }
+        });
+
+        // Update DB Lobby status
+        await prisma.lobby.update({
+          where: { id: lobbyDbId },
+          data: { status: 'GAMEOVER' }
+        });
+
+        // Update player game/wins stats
+        for (const username of playerUsernames) {
+          const isPlayerWinner = username === winnerUser;
+          await prisma.player.update({
+            where: { username },
+            data: {
+              totalGames: { increment: 1 },
+              wins: isPlayerWinner ? { increment: 1 } : undefined
+            }
+          }).catch(err => console.error(`Failed to update stats for ${username}`, err));
+        }
+      } catch (err) {
+        console.error('[DB ERROR] Failed to background-update game results:', err);
+      } finally {
+        this.gameCreationPromises.delete(gameId);
+      }
+    })();
+
+    // Notify listeners that game has ended (runs immediately without DB blocking)
     if (this.onGameEnded) {
       this.onGameEnded(lobby.code);
     }
-
-    this.gameCreationPromises.delete(lobby.gameId);
   }
 
   // Set game duration during LOBBY phase — only the host can change it
@@ -467,8 +493,8 @@ export class GameManager {
         p.isReady = false;
       }
 
-      // Update DB
-      await prisma.lobby.update({
+      // Update DB in background
+      prisma.lobby.update({
         where: { id: lobby.id },
         data: { status: 'LOBBY' }
       }).catch(err => console.error('Failed to reset lobby status in DB:', err));

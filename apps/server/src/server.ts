@@ -19,7 +19,7 @@ const io = new Server(server, {
 });
 
 const prisma = new PrismaClient();
-const gameManager = new GameManager();
+const gameManager = new GameManager(prisma);
 
 // Notify players when the server game timer runs out
 gameManager.onGameEnded = (lobbyCode) => {

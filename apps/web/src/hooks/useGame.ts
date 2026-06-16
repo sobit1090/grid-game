@@ -28,6 +28,12 @@ export function useGame(lobbyCodeFromUrl: string | null) {
   const [socketError, setSocketError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  // Keep a ref to lobbyCodeFromUrl to avoid stale closures in socket events without reconnecting
+  const lobbyCodeFromUrlRef = useRef<string | null>(lobbyCodeFromUrl);
+  useEffect(() => {
+    lobbyCodeFromUrlRef.current = lobbyCodeFromUrl;
+  }, [lobbyCodeFromUrl]);
+
   // Initialize socket connection
   useEffect(() => {
     const socket = io(WS_URL, {
@@ -46,7 +52,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
       // Auto-reconnect session if details exist in memory/localStorage
       const cachedUser = localStorage.getItem('grid_username');
       const cachedColor = localStorage.getItem('grid_color');
-      const activeCode = lobbyCodeFromUrl || localStorage.getItem('grid_lobby_code');
+      const activeCode = lobbyCodeFromUrlRef.current || localStorage.getItem('grid_lobby_code');
 
       if (cachedUser && cachedColor && activeCode) {
         setUsername(cachedUser);
@@ -139,7 +145,7 @@ export function useGame(lobbyCodeFromUrl: string | null) {
     return () => {
       socket.disconnect();
     };
-  }, [lobbyCodeFromUrl]);
+  }, []);
 
   // Create Lobby via socket (no REST call needed)
   const createLobby = useCallback((user: string, clr: string): Promise<string> => {

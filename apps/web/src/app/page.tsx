@@ -109,6 +109,13 @@ function GameContent() {
     }
   }, [lobbyCode, router]);
 
+  // Automatically clear connection error once socket connects successfully
+  useEffect(() => {
+    if (connected && formError === 'Not connected to server. Please wait and try again.') {
+      setFormError(null);
+    }
+  }, [connected, formError]);
+
   const handleCreateLobby = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formUsername.trim()) {
@@ -191,11 +198,25 @@ function GameContent() {
                 <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Multiplayer Grid Game</span>
               </div>
               <h1 className="text-3xl font-black text-white tracking-tight">CosmoGrid</h1>
-              <p className="text-slate-400 text-xs">Enter coordinates, claim cells, dominate the cosmos.</p>
+              <p className="text-slate-400 text-xs mb-3">Enter coordinates, claim cells, dominate the cosmos.</p>
+              
+              {/* Server Status Badge */}
+              <div className="flex justify-center pt-1">
+                <div 
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase font-bold border transition-all duration-300 ${
+                    connected 
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                      : 'bg-amber-500/10 border-amber-500/20 text-amber-400 animate-pulse'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${connected ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
+                  <span>{connected ? 'Server Connected' : 'Connecting to Server...'}</span>
+                </div>
+              </div>
             </div>
 
             {formError && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-lg text-center animate-fade-in">
                 {formError}
               </div>
             )}
@@ -238,11 +259,11 @@ function GameContent() {
               <form onSubmit={handleCreateLobby} className="w-full">
                 <button
                   type="submit"
-                  disabled={isCreating}
-                  className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/20"
+                  disabled={isCreating || !connected}
+                  className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/20"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Create Lobby</span>
+                  <span>{isCreating ? 'Creating...' : !connected ? 'Connecting...' : 'Create Lobby'}</span>
                 </button>
               </form>
 
@@ -257,10 +278,11 @@ function GameContent() {
                 />
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={!connected}
+                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Join Lobby</span>
+                  <span>{!connected ? 'Offline' : 'Join Lobby'}</span>
                 </button>
               </form>
             </div>
